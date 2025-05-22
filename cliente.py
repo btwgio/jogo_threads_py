@@ -3,7 +3,7 @@ import threading
 import time
 
 PORT = 5050
-SERVER_IP = "172.21.224.1"
+SERVER_IP = "10.25.1.69"
 ADDR = (SERVER_IP, PORT)
 FORMAT = "utf-8"
 
@@ -11,10 +11,10 @@ FORMAT = "utf-8"
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect(ADDR)
 
-# configurações do socket UDP (corrigido: porta dinâmica)
-UDP_PORT = 5051
+# configurações do socket UDP
 udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-udp_socket.bind(("", 0))  # <-- Aqui é onde foi corrigido (porta aleatória)
+udp_socket.bind(("", 0))  
+udp_porta_local = udp_socket.getsockname()[1]
 
 nome_jogador = ""
 
@@ -73,7 +73,7 @@ def iniciar_envio():
 
 def iniciar():
     global nome_jogador
-
+    
     print(f"[CONECTANDO] Conectando ao servidor em {SERVER_IP}:{PORT}...")
 
     while True:
@@ -83,6 +83,7 @@ def iniciar():
         print("[ERRO] O nome não pode estar vazio.")
 
     enviar(f"name:{nome_jogador}")
+    enviar(f"udp_port:{udp_porta_local}")
     print(f"[BEM-VINDO] Olá, {nome_jogador}! Você está conectado ao jogo.")
 
     try:
@@ -94,8 +95,6 @@ def iniciar():
             time.sleep(1)
     except KeyboardInterrupt:
         print("\n[ENCERRANDO] Cliente está sendo desligado...")
-    except Exception as e:
-        print(f"[ERRO] Ocorreu um erro: {str(e)}")
     finally:
         client.close()
         print("[DESCONECTADO] Conexão encerrada.")

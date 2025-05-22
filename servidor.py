@@ -1,7 +1,7 @@
 import socket
 import threading
 
-SERVER_IP = "172.21.224.1"
+SERVER_IP = "10.25.1.69"
 PORT = 5050
 ADDR = (SERVER_IP, PORT)
 FORMAT = "utf-8"
@@ -11,7 +11,6 @@ server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
 
 # configurações do socket UDP
-UDP_PORT = 5051
 udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 udp_clientes = set()
 
@@ -40,9 +39,9 @@ def broadcast(mensagem):
             pass
 
 def udp_broadcast(mensagem):
-    for ip in udp_clientes:
+    for ip, porta in udp_clientes:
         try:
-            udp_socket.sendto(mensagem.encode(FORMAT), (ip, UDP_PORT))
+            udp_socket.sendto(mensagem.encode(FORMAT), (ip, porta))
         except:
             pass
 
@@ -50,8 +49,6 @@ def handle_client(conn, addr):
     global primeiro, segundo, terceiro, nomes_jogadores
 
     print(f"[NOVA CONEXÃO] um usuário se conectou pelo endereço {addr}")
-    udp_clientes.add(addr[0])
-    udp_broadcast(f"[NOVA CONEXÃO] um usuário se conectou pelo endereço {addr}")
     conexoes_ativas.append(conn)
     udp_broadcast(f"[CONEXÕES ATIVAS] {len(conexoes_ativas)}")
 
@@ -82,6 +79,12 @@ def handle_client(conn, addr):
                 print(f"[NOME] {addr[0]} se identificou como '{nome_jogador}'")
                 conn.send(f"[INFO] Seu nome foi registrado como '{nome_jogador}'".encode(FORMAT))
                 udp_broadcast(f"[NOME] {addr[0]} se identificou como '{nome_jogador}'")
+                continue
+
+            elif msg.startswith("udp_port:"):
+                porta_udp = int(msg.split(":")[1])
+                udp_clientes.add((addr[0], porta_udp))
+                print(f"[UDP] Registrado {addr[0]}:{porta_udp}")
                 continue
 
             elif msg.startswith("guess:"):
