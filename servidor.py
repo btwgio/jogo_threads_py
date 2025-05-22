@@ -14,7 +14,8 @@ server.bind(ADDR)
 udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 udp_clientes = set()
 
-senha = "4321"
+
+senha = "1234"
 
 primeiro = None
 segundo = None
@@ -87,6 +88,12 @@ def handle_client(conn, addr):
                 print(f"[UDP] Registrado {addr[0]}:{porta_udp}")
                 continue
 
+            elif msg.startswith("udp_port:"):
+                porta_udp = int(msg.split(":")[1])
+                udp_clientes.add((addr[0], porta_udp))
+                print(f"[UDP] Registrado {addr[0]}:{porta_udp}")
+                continue
+
             elif msg.startswith("guess:"):
                 tentativa = msg[6:]
 
@@ -98,22 +105,22 @@ def handle_client(conn, addr):
                     if tentativa == senha:
                         ip = addr[0]
                         if (primeiro and ip == primeiro[1]) or (segundo and ip == segundo[1]) or (terceiro and ip == terceiro[1]):
-                            conn.send("Você já acertou anteriormente!".encode(FORMAT))
+                            conn.send("Você já acertou!".encode(FORMAT))
                         else:
                             if primeiro is None:
                                 primeiro = (nome_jogador, ip)
-                                mensagem = f"Acertou! Você venceu e ficou em PRIMEIRO LUGAR!"
+                                mensagem = "Acertou! Você venceu e ficou em PRIMEIRO LUGAR!"
                                 broadcast(f"[RANKING] {nome_jogador} de IP {ip} acertou a senha e conquistou o PRIMEIRO lugar!")
                             elif segundo is None:
                                 segundo = (nome_jogador, ip)
-                                mensagem = f"Acertou! Você venceu e ficou em SEGUNDO LUGAR!"
+                                mensagem = "Acertou! Você venceu e ficou em SEGUNDO LUGAR!"
                                 broadcast(f"[RANKING] {nome_jogador} de IP {ip} acertou a senha e conquistou o SEGUNDO lugar!")
                             elif terceiro is None:
                                 terceiro = (nome_jogador, ip)
-                                mensagem = f"Acertou! Você venceu e ficou em TERCEIRO LUGAR!"
+                                mensagem = "Acertou! Você venceu e ficou em TERCEIRO LUGAR!"
                                 broadcast(f"[RANKING] {nome_jogador} de IP {ip} acertou a senha e conquistou o TERCEIRO lugar!")
                             else:
-                                mensagem = f"Acertou! Você venceu, mas o pódio já está completo!"
+                                mensagem = "Acertou! Você venceu, mas o pódio já está completo!"
                                 broadcast(f"[INFO] {nome_jogador} de IP {ip} acertou a senha, mas o pódio já está completo!")
 
                             conn.send(mensagem.encode(FORMAT))
@@ -143,7 +150,7 @@ def handle_client(conn, addr):
                             broadcast(ranking)
                             conn.close()
                             break
-                            
+
                     else:
                         conn.send(f"{corretos} dígitos certos".encode(FORMAT))
             else:
