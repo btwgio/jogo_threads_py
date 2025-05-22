@@ -3,7 +3,7 @@ import threading
 import time
 
 PORT = 5050
-SERVER_IP = "10.25.1.69"
+SERVER_IP = "10.25.2.94"
 ADDR = (SERVER_IP, PORT)
 FORMAT = "utf-8"
 
@@ -17,38 +17,52 @@ udp_socket.bind(("", 0))
 udp_porta_local = udp_socket.getsockname()[1]
 
 nome_jogador = ""
+ativo = True  # Flag global para encerrar todas as threads de forma limpa
 
 def handle_messages():
-    while True:
+    global ativo
+    while ativo:
         try:
             mensagem = client.recv(1024).decode(FORMAT)
             if mensagem:
                 print(f"[SERVER] {mensagem}")
+                if "Acertou!" in mensagem or "Você já acertou anteriormente!" in mensagem:
+                    ativo = False
+                    break
             else:
                 print("[DESCONECTADO] Conexão com o servidor foi encerrada.")
+                ativo = False
                 break
         except:
             print("[ERRO] Erro ao receber a mensagem do servidor.")
+            ativo = False
             break
 
 def escutar_udp():
-    while True:
+    global ativo
+    while ativo:
         try:
             data, _ = udp_socket.recvfrom(1024)
             print(f"[UDP] {data.decode(FORMAT)}")
         except:
-            print("[ERRO] Erro ao receber mensagem UDP.")
             break
 
 def enviar(mensagem):
+    global ativo
+    if not ativo:
+        return
     try:
         client.send(mensagem.encode(FORMAT))
     except:
         print("[ERRO] Não foi possível enviar a mensagem para o servidor.")
+        ativo = False
 
 def enviar_mensagem():
-    while True:
+    global ativo
+    while ativo:
         mensagem = input("Digite a senha (4 dígitos): ")
+        if not ativo:
+            break
 
         if len(mensagem) != 4:
             print("[ERRO] A senha deve ter exatamente 4 dígitos.")
@@ -62,8 +76,9 @@ def enviar_mensagem():
         break
 
 def iniciar_envio():
+    global ativo
     try:
-        while True:
+        while ativo:
             enviar_mensagem()
             time.sleep(0.1)
     except KeyboardInterrupt:
@@ -72,7 +87,7 @@ def iniciar_envio():
         print(f"[ERRO] Ocorreu um erro: {str(e)}")
 
 def iniciar():
-    global nome_jogador
+    global nome_jogador, ativo
     
     print(f"[CONECTANDO] Conectando ao servidor em {SERVER_IP}:{PORT}...")
 
@@ -87,16 +102,21 @@ def iniciar():
     print(f"[BEM-VINDO] Olá, {nome_jogador}! Você está conectado ao jogo.")
 
     try:
-        threading.Thread(target=handle_messages, daemon=True).start()
-        threading.Thread(target=escutar_udp, daemon=True).start()
-        threading.Thread(target=iniciar_envio, daemon=True).start()
+        threads = [
+            threading.Thread(target=handle_messages, daemon=True),
+            threading.Thread(target=escutar_udp, daemon=True),
+            threading.Thread(target=iniciar_envio, daemon=True)
+        ]
+        for t in threads:
+            t.start()
 
-        while True:
+        while ativo:
             time.sleep(1)
     except KeyboardInterrupt:
         print("\n[ENCERRANDO] Cliente está sendo desligado...")
     finally:
         client.close()
+        udp_socket.close()
         print("[DESCONECTADO] Conexão encerrada.")
 
 if __name__ == "__main__":

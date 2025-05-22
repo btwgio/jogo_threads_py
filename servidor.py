@@ -1,7 +1,7 @@
 import socket
 import threading
 
-SERVER_IP = "10.25.1.69"
+SERVER_IP = "10.25.2.94"
 PORT = 5050
 ADDR = (SERVER_IP, PORT)
 FORMAT = "utf-8"
@@ -141,6 +141,9 @@ def handle_client(conn, addr):
                                 ranking += f"\n3º Lugar: {nome_terceiro} ({ip_terceiro})"
 
                             broadcast(ranking)
+                            conn.close()
+                            break
+                            
                     else:
                         conn.send(f"{corretos} dígitos certos".encode(FORMAT))
             else:
