@@ -1,113 +1,103 @@
-import streamlit as st
 import socket
 import threading
-import json
-from collections import deque
+import time
 
-SERVER_IP = "10.25.2.231"  # IP do servidor (coloque o correto)
-TCP_PORT = 5050
-UDP_PORT = 5051
+PORT = 5050
+SERVER_IP = "192.168.0.56"
+ADDR = (SERVER_IP, PORT)
 FORMAT = "utf-8"
 
-# Mensagens do servidor TCP
-tcp_msgs = deque(maxlen=100)
-# Mensagens recebidas via UDP (dicas)
-udp_msgs = deque(maxlen=100)
-# Ranking recebido do servidor
-ranking = {}
+client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+client.connect(ADDR)
 
-# Socket TCP para o jogo
-tcp_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-tcp_client.connect((SERVER_IP, TCP_PORT))
 
-# Socket UDP para receber dicas
-udp_client = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-udp_client.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-try:
-    udp_client.bind(("", UDP_PORT))
-except Exception as e:
-    st.warning(f"Erro ao bindar UDP (pode estar em uso): {e}")
+nome_jogador = ""
 
-def escutar_tcp():
+def handle_messages():
     while True:
         try:
-            msg = tcp_client.recv(1024).decode(FORMAT)
-            if msg:
-                try:
-                    r = json.loads(msg)
-                    if isinstance(r, dict):
-                        global ranking
-                        ranking = r
-                        continue
-                except:
-                    pass
-                tcp_msgs.append(f"[Servidor] {msg}")
+            mensagem = client.recv(1024).decode(FORMAT)
+            if mensagem:
+                print(f"[SERVER] {mensagem}")
             else:
-                tcp_msgs.append("[Servidor] Conexão encerrada.")
+                print("[DESCONECTADO] Conexão com o servidor foi encerrada.")
                 break
-        except Exception as e:
-            tcp_msgs.append(f"[Erro TCP] {e}")
+        except:
+            print("[ERRO] Erro ao receber a mensagem do servidor.")
             break
 
-def escutar_udp():
-    while True:
-        try:
-            msg, _ = udp_client.recvfrom(1024)
-            udp_msgs.append(f"[Dica] {msg.decode(FORMAT)}")
-        except Exception as e:
-            udp_msgs.append(f"[Erro UDP] {e}")
-            break
-
-def enviar(msg):
+def enviar(mensagem):
     try:
-        tcp_client.send(msg.encode(FORMAT))
+        client.send(mensagem.encode(FORMAT))
+    except:
+        print("[ERRO] Não foi possível enviar a mensagem para o servidor.")
+
+def enviar_mensagem():
+    while True:
+        mensagem = input("Digite a senha (4 dígitos): ")
+        
+        
+        if len(mensagem) != 4:
+            print("[ERRO] A senha deve ter exatamente 4 dígitos.")
+            continue
+        
+        
+        if not mensagem.isdigit():
+            print("[ERRO] A senha deve conter apenas números.")
+            continue
+        
+        
+        enviar(f"guess:{mensagem}")
+        break
+
+def iniciar_envio():
+    try:
+        while True:
+            enviar_mensagem()
+            time.sleep(0.1)
+    except KeyboardInterrupt:
+        print("\n[ENCERRANDO] Cliente está sendo desligado...")
     except Exception as e:
-        tcp_msgs.append(f"[Erro TCP] {e}")
+        print(f"[ERRO] Ocorreu um erro: {str(e)}")
 
-threading.Thread(target=escutar_tcp, daemon=True).start()
-threading.Thread(target=escutar_udp, daemon=True).start()
+def iniciar():
+    global nome_jogador
+    
+    print(f"[CONECTANDO] Conectando ao servidor em {SERVER_IP}:{PORT}...")
+    
+    
+    while True:
+        nome_jogador = input("Digite seu nome: ").strip()
+        if nome_jogador:
+            break
+        print("[ERRO] O nome não pode estar vazio.")
+    
+    
+    enviar(f"name:{nome_jogador}")
+    print(f"[BEM-VINDO] Olá, {nome_jogador}! Você está conectado ao jogo.")
+    
+    try:
+        
+        thread1 = threading.Thread(target=handle_messages)
+        thread1.daemon = True  
+        thread1.start()
+        
+    
+        thread2 = threading.Thread(target=iniciar_envio)
+        thread2.daemon = True  
+        thread2.start()
+        
+        
+        thread1.join()
+        thread2.join()
+        
+    except KeyboardInterrupt:
+        print("\n[ENCERRANDO] Cliente está sendo desligado...")
+    except Exception as e:
+        print(f"[ERRO] Ocorreu um erro: {str(e)}")
+    finally:
+        client.close()
+        print("[DESCONECTADO] Conexão encerrada.")
 
-st.set_page_config(page_title="Quebra de Senha - Hacker Game", layout="centered")
-st.title("💻 Quebra de Senha - Hacker Game")
-
-nome = st.text_input("Digite seu nome:", max_chars=20, key="nome")
-palpite = st.text_input("Digite seu palpite de senha:", max_chars=50, key="palpite")
-
-if st.button("Entrar / Registrar"):
-    if nome.strip() == "":
-        st.warning("Por favor digite seu nome para começar.")
-    else:
-        enviar(f"name:{nome.strip()}")
-        st.success(f"Olá, {nome.strip()}! Você está conectado.")
-
-if st.button("Enviar Palpite"):
-    if nome.strip() == "":
-        st.warning("Por favor digite seu nome antes de enviar o palpite.")
-    elif palpite.strip() == "":
-        st.warning("Digite um palpite antes de enviar.")
-    else:
-        enviar(f"guess:{palpite.strip()}")
-        st.success(f"Palpite '{palpite.strip()}' enviado!")
-
-if st.button("Ver Ranking Atual"):
-    enviar("getranking")
-
-st.subheader("Mensagens do Servidor (TCP)")
-for m in list(tcp_msgs)[-20:]:
-    if "errou" in m.lower() or "erro" in m.lower():
-        st.error(m)
-    elif "acertou" in m.lower():
-        st.success(m)
-    else:
-        st.info(m)
-
-st.subheader("Dicas Recebidas (UDP)")
-for d in list(udp_msgs)[-10:]:
-    st.info(d)
-
-st.subheader("Ranking Atual")
-if ranking:
-    for jogador, tentativas in ranking.items():
-        st.write(f"**{jogador}**: {tentativas} tentativas")
-else:
-    st.write("Nenhum ranking disponível. Peça para atualizar clicando no botão acima.")
+if __name__ == "__main__":
+    iniciar()
