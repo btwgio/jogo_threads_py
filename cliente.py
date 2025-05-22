@@ -3,13 +3,18 @@ import threading
 import time
 
 PORT = 5050
-SERVER_IP = "192.168.0.56"
+SERVER_IP = "26.103.100.48"
 ADDR = (SERVER_IP, PORT)
 FORMAT = "utf-8"
 
+# configurações do socket TCP
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect(ADDR)
 
+# configurações do socket UDP
+UDP_PORT = 5051
+udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+udp_socket.bind(("", UDP_PORT))
 
 nome_jogador = ""
 
@@ -26,6 +31,15 @@ def handle_messages():
             print("[ERRO] Erro ao receber a mensagem do servidor.")
             break
 
+def escutar_udp():
+    while True:
+        try:
+            data, _ = udp_socket.recvfrom(1024)
+            print(f"[UDP] {data.decode(FORMAT)}")
+        except:
+            print("[ERRO] Erro ao receber mensagem UDP.")
+            break
+
 def enviar(mensagem):
     try:
         client.send(mensagem.encode(FORMAT))
@@ -35,18 +49,15 @@ def enviar(mensagem):
 def enviar_mensagem():
     while True:
         mensagem = input("Digite a senha (4 dígitos): ")
-        
-        
+
         if len(mensagem) != 4:
             print("[ERRO] A senha deve ter exatamente 4 dígitos.")
             continue
-        
-        
+
         if not mensagem.isdigit():
             print("[ERRO] A senha deve conter apenas números.")
             continue
-        
-        
+
         enviar(f"guess:{mensagem}")
         break
 
