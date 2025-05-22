@@ -17,7 +17,7 @@ udp_socket.bind(("", 0))
 udp_porta_local = udp_socket.getsockname()[1]
 
 nome_jogador = ""
-ativo = True  # Flag global para encerrar todas as threads de forma limpa
+ativo = True  
 
 def handle_messages():
     global ativo
@@ -26,7 +26,7 @@ def handle_messages():
             mensagem = client.recv(1024).decode(FORMAT)
             if mensagem:
                 print(f"[SERVER] {mensagem}")
-                if "Acertou!" in mensagem or "Você já acertou anteriormente!" in mensagem:
+                if "Acertou!" in mensagem:
                     ativo = False
                     break
             else:
@@ -100,6 +100,7 @@ def iniciar():
     enviar(f"name:{nome_jogador}")
     enviar(f"udp_port:{udp_porta_local}")
     print(f"[BEM-VINDO] Olá, {nome_jogador}! Você está conectado ao jogo.")
+    print(f"[DICA] A dica é: Terceira copa do Brasil")
 
     try:
         threads = [
