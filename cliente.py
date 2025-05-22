@@ -3,7 +3,7 @@ import threading
 import time
 
 PORT = 5050
-SERVER_IP = "10.25.2.94"
+SERVER_IP = "10.25.1.243"
 ADDR = (SERVER_IP, PORT)
 FORMAT = "utf-8"
 
