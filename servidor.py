@@ -11,9 +11,8 @@ server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind(ADDR)
 
 # configurações do socket UDP
+UDP_PORT = 5051
 udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
-UDP_PORT_PADRAO = 5051
 udp_clientes = set()
 
 senha = "4321"
@@ -41,9 +40,9 @@ def broadcast(mensagem):
             pass
 
 def udp_broadcast(mensagem):
-    for ip, porta in udp_clientes:
+    for ip in udp_clientes:
         try:
-            udp_socket.sendto(mensagem.encode(FORMAT), (ip, porta))
+            udp_socket.sendto(mensagem.encode(FORMAT), (ip, UDP_PORT))
         except:
             pass
 
@@ -51,10 +50,22 @@ def handle_client(conn, addr):
     global primeiro, segundo, terceiro, nomes_jogadores
 
     print(f"[NOVA CONEXÃO] um usuário se conectou pelo endereço {addr}")
+    udp_clientes.add(addr[0])
+    udp_broadcast(f"[NOVA CONEXÃO] um usuário se conectou pelo endereço {addr}")
     conexoes_ativas.append(conn)
+    udp_broadcast(f"[CONEXÕES ATIVAS] {len(conexoes_ativas)}")
 
     nome_jogador = f"Jogador-{addr[0]}"
-    porta_udp = UDP_PORT_PADRAO  # fallback
+
+    if primeiro:
+        nome_primeiro, ip_primeiro = primeiro
+        conn.send(f"[INFO] Primeiro lugar já foi conquistado por {nome_primeiro} ({ip_primeiro})".encode(FORMAT))
+    if segundo:
+        nome_segundo, ip_segundo = segundo
+        conn.send(f"[INFO] Segundo lugar já foi conquistado por {nome_segundo} ({ip_segundo})".encode(FORMAT))
+    if terceiro:
+        nome_terceiro, ip_terceiro = terceiro
+        conn.send(f"[INFO] Terceiro lugar já foi conquistado por {nome_terceiro} ({ip_terceiro})".encode(FORMAT))
 
     while True:
         try:
@@ -64,21 +75,13 @@ def handle_client(conn, addr):
                 break
 
             if msg.startswith("name:"):
-                partes = msg[5:].split(";")
-                nome_jogador = partes[0].strip()
-
+                nome_jogador = msg[5:].strip()
                 if not nome_jogador:
                     nome_jogador = f"Jogador-{addr[0]}"
                 nomes_jogadores[addr[0]] = nome_jogador
-
-                if len(partes) > 1 and partes[1].startswith("udp:"):
-                    porta_udp = int(partes[1][4:])
-                udp_clientes.add((addr[0], porta_udp))
-
-                print(f"[NOME] {addr[0]} se identificou como '{nome_jogador}' (UDP: {porta_udp})")
+                print(f"[NOME] {addr[0]} se identificou como '{nome_jogador}'")
                 conn.send(f"[INFO] Seu nome foi registrado como '{nome_jogador}'".encode(FORMAT))
                 udp_broadcast(f"[NOME] {addr[0]} se identificou como '{nome_jogador}'")
-                udp_broadcast(f"[CONEXÕES ATIVAS] {len(conexoes_ativas)}")
                 continue
 
             elif msg.startswith("guess:"):
@@ -88,9 +91,9 @@ def handle_client(conn, addr):
                     conn.send(f"Erro: A senha tem {len(senha)} dígitos. Sua tentativa tem {len(tentativa)} dígitos.".encode(FORMAT))
                 else:
                     corretos = tentativa_correta(tentativa)
-                    ip = addr[0]
 
                     if tentativa == senha:
+                        ip = addr[0]
                         if (primeiro and ip == primeiro[1]) or (segundo and ip == segundo[1]) or (terceiro and ip == terceiro[1]):
                             conn.send("Você já acertou anteriormente!".encode(FORMAT))
                         else:
@@ -112,27 +115,42 @@ def handle_client(conn, addr):
 
                             conn.send(mensagem.encode(FORMAT))
 
+                            print("\n[RANKING ATUAL]")
+                            if primeiro:
+                                nome_primeiro, ip_primeiro = primeiro
+                                print(f"1º Lugar: {nome_primeiro} ({ip_primeiro})")
+                            if segundo:
+                                nome_segundo, ip_segundo = segundo
+                                print(f"2º Lugar: {nome_segundo} ({ip_segundo})")
+                            if terceiro:
+                                nome_terceiro, ip_terceiro = terceiro
+                                print(f"3º Lugar: {nome_terceiro} ({ip_terceiro})")
+
                             ranking = "\n[RANKING ATUAL]"
                             if primeiro:
-                                ranking += f"\n1º Lugar: {primeiro[0]} ({primeiro[1]})"
+                                nome_primeiro, ip_primeiro = primeiro
+                                ranking += f"\n1º Lugar: {nome_primeiro} ({ip_primeiro})"
                             if segundo:
-                                ranking += f"\n2º Lugar: {segundo[0]} ({segundo[1]})"
+                                nome_segundo, ip_segundo = segundo
+                                ranking += f"\n2º Lugar: {nome_segundo} ({ip_segundo})"
                             if terceiro:
-                                ranking += f"\n3º Lugar: {terceiro[0]} ({terceiro[1]})"
+                                nome_terceiro, ip_terceiro = terceiro
+                                ranking += f"\n3º Lugar: {nome_terceiro} ({ip_terceiro})"
+
                             broadcast(ranking)
                     else:
                         conn.send(f"{corretos} dígitos certos".encode(FORMAT))
             else:
-                conn.send("Formato inválido. Use 'guess:XXXX' ou 'name:SeuNome'.".encode(FORMAT))
+                conn.send("Formato inválido. Use 'guess:XXXX' para tentar a senha ou 'name:SeuNome' para definir seu nome.".encode(FORMAT))
 
         except Exception as e:
             print(f"[ERRO] {addr}: {str(e)}")
+            print(f"[DESCONECTADO] {addr}")
             break
 
     if conn in conexoes_ativas:
         conexoes_ativas.remove(conn)
     udp_broadcast(f"[DESCONECTADO] {addr[0]} saiu. Conexões ativas: {len(conexoes_ativas)}")
-    conn.close()
 
 def start():
     print("[INICIANDO] Servidor iniciado")

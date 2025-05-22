@@ -11,10 +11,10 @@ FORMAT = "utf-8"
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 client.connect(ADDR)
 
-# configurações do socket UDP
+# configurações do socket UDP (corrigido: porta dinâmica)
+UDP_PORT = 5051
 udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-udp_socket.bind(("", 0))  # Porta dinâmica
-udp_port_local = udp_socket.getsockname()[1]  # Descobre a porta escolhida
+udp_socket.bind(("", 0))  # <-- Aqui é onde foi corrigido (porta aleatória)
 
 nome_jogador = ""
 
@@ -82,23 +82,22 @@ def iniciar():
             break
         print("[ERRO] O nome não pode estar vazio.")
 
-    # Envia nome e porta UDP atual para o servidor
-    enviar(f"name:{nome_jogador};udp:{udp_port_local}")
+    enviar(f"name:{nome_jogador}")
     print(f"[BEM-VINDO] Olá, {nome_jogador}! Você está conectado ao jogo.")
-    
+
     try:
         threading.Thread(target=handle_messages, daemon=True).start()
         threading.Thread(target=escutar_udp, daemon=True).start()
         threading.Thread(target=iniciar_envio, daemon=True).start()
 
         while True:
-            time.sleep(1)  # mantém a main thread viva
-
+            time.sleep(1)
     except KeyboardInterrupt:
         print("\n[ENCERRANDO] Cliente está sendo desligado...")
+    except Exception as e:
+        print(f"[ERRO] Ocorreu um erro: {str(e)}")
     finally:
         client.close()
-        udp_socket.close()
         print("[DESCONECTADO] Conexão encerrada.")
 
 if __name__ == "__main__":
