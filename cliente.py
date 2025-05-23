@@ -100,7 +100,6 @@ def iniciar():
     enviar(f"name:{nome_jogador}")
     enviar(f"udp_port:{udp_porta_local}")
     print(f"[BEM-VINDO] Olá, {nome_jogador}! Você está conectado ao jogo.")
-    print(f"[DICA] A dica é: Terceira copa do Brasil")
 
     try:
         threads = [
