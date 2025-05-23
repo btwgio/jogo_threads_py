@@ -88,12 +88,6 @@ def handle_client(conn, addr):
                 print(f"[UDP] Registrado {addr[0]}:{porta_udp}")
                 continue
 
-            elif msg.startswith("udp_port:"):
-                porta_udp = int(msg.split(":")[1])
-                udp_clientes.add((addr[0], porta_udp))
-                print(f"[UDP] Registrado {addr[0]}:{porta_udp}")
-                continue
-
             elif msg.startswith("guess:"):
                 tentativa = msg[6:]
 
